@@ -1,7 +1,10 @@
 import os
 import shutil
 import pathlib
+import struct
 from glob import iglob
+
+format_version = 14
 
 for result in iglob(os.environ["LOCALAPPDATA"] + "\\Packages\\SystemEraSoftworks*"):
     SES_path = result
@@ -21,15 +24,25 @@ def decodeFolder(name, origin, destination):
 	print(f"decoding {origin}")
 
 	# create folder
-	os.mkdir(os.path.join(decode_path, name))
+	folder_path = os.path.join(decode_path, name)
+	os.mkdir(folder_path)
 
 	# parse containers.index
 	if os.path.isfile(os.path.join(origin, "containers.index")):
 		print("folder with container.index")
 
 		with open(os.path.join(origin, "containers.index"), mode="rb") as container_file:
-			file_content = container_file.read()
-			print(file_content)
+			header_data = struct.unpack("ll216s", container_file.read(224))
+
+			version = header_data[0]
+			print(f"Format version: {version}, {'matches' if version == format_version else 'VERSION MISMATCH'}")
+
+			folder_count = header_data[1]
+			print(f"Found {folder_count} folder entries")
+
+			print(f"Header: {header_data[2].decode('ansi')}")
+			with open(os.path.join(folder_path, "header.bin"), "wb") as header_file:
+				header_file.write(header_data[2])
 	# recursion
 
 	# parse container.*
