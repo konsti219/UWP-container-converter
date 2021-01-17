@@ -22,16 +22,10 @@ print(f'container path found: {container_path}')
 
 def decodeFolder(name, origin, destination):
 	# name: name of the folder
-	# origin: path to the folder (with encoded hex folder id) (the dir where container.* can be found)
+	# origin: path to the folder (with hex folder) (the dir where container.* can be found)
 	# destination: path where the folder is supposed to go (without folder name)
 
 	print(f"decoding {origin}")
-
-	# clean up
-	try:
-		shutil.rmtree(os.path.join(destination, name))
-	except:
-		pass
 
 	# create folder
 	folder_path = os.path.join(destination, name)
@@ -94,25 +88,52 @@ def decodeFolder(name, origin, destination):
 					with open(os.path.join(folder_path, entry_name), "wb") as dest_file:
 						dest_file.write(origin_file.read())
 
+
+
+
+
 def encodeFolder(origin, destination):
-	# name: name of the folder
-	# origin: path to the folder (with encoded hex folder id) (the dir where container.* can be found)
-	# destination: path where the folder is supposed to go (without folder name)
+	# origin: path to the folder (with folder name)
+	# destination: path where the folder is supposed to go (with hex folder name)
 
 	print(f"encoding {origin}")
-
-	# clean up
-	try:
-		shutil.rmtree(destination)
-	except:
-		pass
 
 	# create folder
 	os.mkdir(destination)
 
-	# check for subfolders
+	# check for subfolders and encode
 	sub_folders = [ name for name in os.listdir(origin) if os.path.isdir(os.path.join(origin, name)) ]
 	print(sub_folders)
+	if len(sub_folders) > 0:
+		print("Folder with subfolders")
+
+		# create containers.index
+		with open(os.path.join(destination, "containers.index"), mode="ab") as container_file:
+			with open(os.path.join(origin, "header.bin"), "rb") as header_file:
+				container_file.write(struct.pack("ll216s", containers_version, len(sub_folders), header_file.read(216)))
+
+			print(f"Creating {len(sub_folders)} folders")
+
+			# read entries
+			for i in range(0, len(sub_folders)):
+				pass
+				# get length of entry name
+				#name_length = struct.unpack("i", container_file.read(4))[0] * 2
+
+				# read entry wit length of name + reminder
+				#entry_data = struct.unpack(f"{name_length}s51x16s24x", container_file.read(name_length + 91))
+				#entry_name = entry_data[0].decode("utf16")
+
+				#print(f"Folder entry {i}: {entry_name}")
+
+				# recursion
+				#decodeFolder(entry_name, os.path.join(origin, decodeFolderName(entry_data[1].hex().upper())), folder_path)
+
+	# check for files and encode
+	files = [name for name in os.listdir(origin) if os.path.isfile(os.path.join(origin, name)) and name != "header.bin"]
+	print(files)
+	if len(files) > 0:
+		print("Folder with files")
 	
 def decodeFolderName(name):
 	result = ""
@@ -132,11 +153,27 @@ def decodeFolderName(name):
 if __name__ == "__main__":
 	pathlib.Path(decode_path).mkdir(parents=True, exist_ok=True)
 	
-	if (len(sys.argv) > 1):
+	if len(sys.argv) > 1:
 		if sys.argv[1] == "-d":
-			pass
+			# decode
+
+			# clean up
+			try:
+				shutil.rmtree(os.path.join(decode_path, "root"))
+			except:
+				pass
+
 			decodeFolder("root", container_path, decode_path)
+
 		elif sys.argv[1] == "-e":
+			# encode
+
+			# clean up
+			try:
+				shutil.rmtree(container_path)
+			except:
+				pass
+
 			encodeFolder(os.path.join(decode_path, "root"), container_path)
 		else:
 			print("specify -d or -e")
