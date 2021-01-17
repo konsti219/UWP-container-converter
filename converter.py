@@ -57,29 +57,17 @@ def decodeFolder(name, origin, destination):
 
 			# read entries
 			for i in range(0, folder_count):
+				# get length of entry name
 				name_length = struct.unpack("i", container_file.read(4))[0] * 2
-				# print(f"Name of entry {i} has length {name_length}")
 
-				entry_name = container_file.read(name_length).decode("utf16")
+				# read entry wit length of name + reminder
+				entry_data = struct.unpack(f"{name_length}s51x16s24x", container_file.read(name_length + 91))
+				entry_name = entry_data[0].decode("utf16")
+
 				print(f"Folder entry {i}: {entry_name}")
 
-				# skip 4 random bytes
-				container_file.read(4)
-
-				# x: unknown data
-				x_length = struct.unpack("i", container_file.read(4))[0] * 2
-				x_data = container_file.read(x_length)
-
-				# skip 5 random bytes
-				container_file.read(5)
-
-				entry_foldername = decodeFolderName(container_file.read(16).hex().upper())
-
-				# skip last bytes
-				container_file.read(24)
-
 				# recursion
-				decodeFolder(entry_name, os.path.join(origin, entry_foldername), folder_path)
+				decodeFolder(entry_name, os.path.join(origin, decodeFolderName(entry_data[1].hex().upper())), folder_path)
 
 	# parse container.*
 	for result in iglob(origin + "\\container.*"):
