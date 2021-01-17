@@ -121,6 +121,10 @@ def encodeFolder(origin, destination):
 
 	# create folder
 	os.mkdir(destination)
+
+	# check for subfolders
+	sub_folders = [ name for name in os.listdir(origin) if os.path.isdir(os.path.join(origin, name)) ]
+	print(sub_folders)
 	
 def decodeFolderName(name):
 	result = ""
