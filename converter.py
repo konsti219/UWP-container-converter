@@ -54,7 +54,7 @@ def decodeFolder(name, origin, destination):
 						dest_file.write(origin_file.read())
 
 
-def encodeFolder(origin, destination):
+def encodeFolder(origin, destination, container_num):
 	print(f"encoding {origin}")
 
 	# create folder
@@ -64,8 +64,7 @@ def encodeFolder(origin, destination):
 	files = [name for name in os.listdir(origin) if os.path.isfile(os.path.join(origin, name))]
 	print(files)
 	
-	# create container.13 file (13 chosen randomly)
-	with open(os.path.join(destination, "container.13"), mode="ab") as container_file:
+	with open(os.path.join(destination, "container." + str(int.from_bytes(container_num, "big"))), mode="ab") as container_file:
 		# create header
 		container_file.write(struct.pack("ll", container_version, len(files)))
 
@@ -103,13 +102,13 @@ def readContainers(folder_name):
 			name_length = struct.unpack("i", container_file.read(4))[0] * 2
 
 			# read entry with length of name + remainder
-			entry_data = struct.unpack(f"{name_length}s51x16s24x", container_file.read(name_length + 91))
+			entry_data = struct.unpack(f"{name_length}s46xs4x16s24x", container_file.read(name_length + 91))
 			entry_name = entry_data[0].decode("utf16")
 
 			print(f"Folder entry {i}: {entry_name}")
 
 			if (entry_name == folder_name):
-				return encodeName(entry_data[1].hex().upper())
+				return (encodeName(entry_data[2].hex().upper()), entry_data[1])
 	
 def encodeName(name):
 	result = ""
@@ -129,7 +128,9 @@ def encodeName(name):
 if __name__ == "__main__":
 	pathlib.Path(decode_path).mkdir(parents=True, exist_ok=True)
 
-	saves_path = os.path.join(container_path, readContainers("UE4SaveGameFileContainer"))
+	container_data = readContainers("UE4SaveGameFileContainer")
+	saves_path = os.path.join(container_path, container_data[0])
+	container_num = container_data[1]
 	
 	if len(sys.argv) > 1:
 		if sys.argv[1] == "-d":
@@ -146,7 +147,7 @@ if __name__ == "__main__":
 			except:
 				pass
 
-			encodeFolder(os.path.join(decode_path, "saves"), saves_path)
+			encodeFolder(os.path.join(decode_path, "saves"), saves_path, container_num)
 		else:
 			print("specify -d or -e")
 	else:
