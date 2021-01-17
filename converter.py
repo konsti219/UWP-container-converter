@@ -3,6 +3,7 @@ import shutil
 import sys
 import pathlib
 import struct
+import secrets
 from glob import iglob
 
 containers_version = 14
@@ -62,8 +63,25 @@ def encodeFolder(origin, destination):
 	# check for files and encode
 	files = [name for name in os.listdir(origin) if os.path.isfile(os.path.join(origin, name))]
 	print(files)
-	if len(files) > 0:
-		print("Folder with files")
+	
+	# create container.13 file (13 chosen randomly)
+	with open(os.path.join(destination, "container.13"), mode="ab") as container_file:
+		# create header
+		container_file.write(struct.pack("ll", container_version, len(files)))
+
+		# write entries
+		for file_name in files:
+			entry_name = file_name.encode("utf16")[2:]
+
+			container_file.write(entry_name)
+			container_file.write(b"\00" * (144 - len(entry_name)))
+
+			file_key = secrets.token_bytes(16)
+			container_file.write(file_key)
+
+			with open(os.path.join(origin, file_name), mode="rb") as origin_file:
+				with open(os.path.join(destination, encodeName(file_key.hex().upper())), "wb") as dest_file:
+					dest_file.write(origin_file.read())
 
 def readContainers(folder_name):
 	# parse containers.index
