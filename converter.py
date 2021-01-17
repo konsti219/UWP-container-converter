@@ -43,7 +43,7 @@ def decodeFolder(name, origin, destination):
 			folder_count = header_data[1]
 			print(f"Found {folder_count} folder entries")
 
-			print(f"Header: {header_data[2].decode('ansi')}")
+			print(f"Header: {header_data[2].decode('utf16')}")
 			with open(os.path.join(folder_path, "header.bin"), "wb") as header_file:
 				header_file.write(header_data[2])
 
@@ -52,7 +52,7 @@ def decodeFolder(name, origin, destination):
 				name_length = struct.unpack("i", container_file.read(4))[0] * 2
 				# print(f"Name of entry {i} has length {name_length}")
 
-				entry_name = container_file.read(name_length).decode("ansi")
+				entry_name = container_file.read(name_length).decode("utf16")
 				print(f"Entry {i}: {entry_name}")
 
 				# skip 4 random bytes
@@ -65,10 +65,10 @@ def decodeFolder(name, origin, destination):
 				# skip 5 random bytes
 				container_file.read(5)
 
-				entry_path = container_file.read(16)
-				print(entry_path.hex().upper())
+				entry_path = decodeFolderName(container_file.read(16).hex().upper())
+				print(entry_path)
 
-				print(container_file.read(24).hex().upper())
+				container_file.read(24)
 
 	# recursion
 
@@ -76,6 +76,21 @@ def decodeFolder(name, origin, destination):
 	# create files
 
 	pass
+
+def decodeFolderName(name):
+	result = ""
+
+	result = result + name[6:8]
+	result = result + name[4:6]
+	result = result + name[2:4]
+	result = result + name[0:2]
+	result = result + name[10:12]
+	result = result + name[8:10]
+	result = result + name[14:16]
+	result = result + name[12:14]
+	result = result + name[16:32]
+
+	return result
 
 if __name__ == "__main__":
 	# clean up
@@ -94,6 +109,7 @@ if __name__ == "__main__":
 # 18 00 00 00 55 00 45 00 34 00 53 00 61 00 76 00 65 00 47 00 61 00 6D 00 65 00 46 00 69 00 6C 00 65 00 43 00 6F 00 6E 00 74 00 61 00 69 00 6E 00 65 00 72
 # 00 00 00 00 00 13 00 00 00 22 00 30 00 78 00 38 00 44 00 38 00 42 00 41 00 34 00 30 00 44 00 42 00 35 00 45 00 41 00 34 00 46 00 32 00 22 00 2B 01 00 00 00 2A 4E EB 1E 15 38 60 45 A4 71 C3 7F 15 2D 17 09 A0 14 94 AF 29 EC D6 01 00 00 00 00 00 00 00 00 CF 17 00 00 00 00 00 00
 # 00 00 00 00 00 13 00 00 00 22 00 30 00 78 00 38 00 44 00 38 00 42 00 41 00 33 00 43 00 31 00 41 00 39 00 42 00 44 00 31 00 43 00 32 00 22 00 09 01 00 00 00 29 F2 DC 72 59 88 5D 4C BA E3 A8 2E 49 14 0B A8 20 C1 3A 55 24 EC D6 01 00 00 00 00 00 00 00 00 90 F5 02 00 00 00 00 00
-# 1EEB4E2A38154560A471C37F152D1709
 
-# 1EEB4E2A38154560A471C37F152D1709
+# containers.index
+# 1E EB 4E 2A   38 15   45 60   A4 71 C3 7F 15 2D 17 09 decoded
+# 2A 4E EB 1E   15 38   60 45   A4 71 C3 7F 15 2D 17 09 encoded
