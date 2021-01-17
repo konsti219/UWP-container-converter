@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 import pathlib
 import struct
 from glob import iglob
@@ -25,6 +26,12 @@ def decodeFolder(name, origin, destination):
 	# destination: path where the folder is supposed to go (without folder name)
 
 	print(f"decoding {origin}")
+
+	# clean up
+	try:
+		shutil.rmtree(os.path.join(destination, name))
+	except:
+		pass
 
 	# create folder
 	folder_path = os.path.join(destination, name)
@@ -94,12 +101,26 @@ def decodeFolder(name, origin, destination):
 				print(f"File entry {i}: {entry_name}")
 
 				entry_filename = decodeFolderName(container_file.read(16).hex().upper())
-				print(entry_filename)
 
 				with open(os.path.join(origin, entry_filename), mode="rb") as origin_file:
 					with open(os.path.join(folder_path, entry_name), "wb") as dest_file:
 						dest_file.write(origin_file.read())
 
+def encodeFolder(origin, destination):
+	# name: name of the folder
+	# origin: path to the folder (with encoded hex folder id) (the dir where container.* can be found)
+	# destination: path where the folder is supposed to go (without folder name)
+
+	print(f"encoding {origin}")
+
+	# clean up
+	try:
+		shutil.rmtree(destination)
+	except:
+		pass
+
+	# create folder
+	os.mkdir(destination)
 	
 def decodeFolderName(name):
 	result = ""
@@ -117,15 +138,18 @@ def decodeFolderName(name):
 	return result
 
 if __name__ == "__main__":
-	# clean up
-	try:
-		shutil.rmtree(decode_path)
-	except:
-		pass
-
-	pathlib.Path(decode_path).mkdir(parents=True, exist_ok=True) 
-
-	decodeFolder("root", container_path, decode_path)
+	pathlib.Path(decode_path).mkdir(parents=True, exist_ok=True)
+	
+	if (len(sys.argv) > 1):
+		if sys.argv[1] == "-d":
+			pass
+			decodeFolder("root", container_path, decode_path)
+		elif sys.argv[1] == "-e":
+			encodeFolder(os.path.join(decode_path, "root"), container_path)
+		else:
+			print("specify -d or -e")
+	else:
+		print("specify -d or -e")
 
 # ....U.E.4.C.o.n.f.i.g.F.i.l.e.C.o.n.t.a.i.n.e.r.U.W.P.........".0.x.8.D.8.B.A.4.0.D.B.5.E.A.4.F.2.".+....*Në..8`E¤qÃ..-.. .”¯)ìÖ.........Ï.......
 # ....U.E.4.S.a.v.e.G.a.m.e.F.i.l.e.C.o.n.t.a.i.n.e.r.........".0.x.8.D.8.B.A.3.C.1.A.9.B.D.1.C.2."......)òÜrYˆ]Lºã¨.I..¨ Á:U$ìÖ..........õ......
