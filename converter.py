@@ -4,7 +4,8 @@ import pathlib
 import struct
 from glob import iglob
 
-format_version = 14
+containers_version = 14
+container_version = 4
 
 # pylint: disable=unused-variable
 
@@ -26,19 +27,19 @@ def decodeFolder(name, origin, destination):
 	print(f"decoding {origin}")
 
 	# create folder
-	folder_path = os.path.join(decode_path, name)
+	folder_path = os.path.join(destination, name)
 	os.mkdir(folder_path)
 
 	# parse containers.index
 	if os.path.isfile(os.path.join(origin, "containers.index")):
-		print("folder with container.index")
+		print("Folder with containers.index")
 
 		with open(os.path.join(origin, "containers.index"), mode="rb") as container_file:
 			# parse header
 			header_data = struct.unpack("ll216s", container_file.read(224))
 
 			version = header_data[0]
-			print(f"Format version: {version}, {'matches' if version == format_version else 'VERSION MISMATCH'}")
+			print(f"Format version: {version}, {'matches' if version == containers_version else 'VERSION MISMATCH'}")
 
 			folder_count = header_data[1]
 			print(f"Found {folder_count} folder entries")
@@ -53,7 +54,7 @@ def decodeFolder(name, origin, destination):
 				# print(f"Name of entry {i} has length {name_length}")
 
 				entry_name = container_file.read(name_length).decode("utf16")
-				print(f"Entry {i}: {entry_name}")
+				print(f"Folder entry {i}: {entry_name}")
 
 				# skip 4 random bytes
 				container_file.read(4)
@@ -65,18 +66,41 @@ def decodeFolder(name, origin, destination):
 				# skip 5 random bytes
 				container_file.read(5)
 
-				entry_path = decodeFolderName(container_file.read(16).hex().upper())
-				print(entry_path)
+				entry_foldername = decodeFolderName(container_file.read(16).hex().upper())
 
+				# skip last bytes
 				container_file.read(24)
 
-	# recursion
+				# recursion
+				decodeFolder(entry_name, os.path.join(origin, entry_foldername), folder_path)
 
 	# parse container.*
-	# create files
+	for result in iglob(origin + "\\container.*"):
+		print("Folder with container.*")
+		
+		with open(result, mode="rb") as container_file:
+			# parse header
+			header_data = struct.unpack("ll", container_file.read(8))
 
-	pass
+			version = header_data[0]
+			print(f"Format version: {version}, {'matches' if version == container_version else 'VERSION MISMATCH'}")
 
+			file_count = header_data[1]
+			print(f"Found {file_count} file entries")
+
+			# read entries
+			for i in range(0, file_count):
+				entry_name = (container_file.read(144).split(b"\x00" * 2)[0] + b"\x00").decode("utf16")
+				print(f"File entry {i}: {entry_name}")
+
+				entry_filename = decodeFolderName(container_file.read(16).hex().upper())
+				print(entry_filename)
+
+				with open(os.path.join(origin, entry_filename), mode="rb") as origin_file:
+					with open(os.path.join(folder_path, entry_name), "wb") as dest_file:
+						dest_file.write(origin_file.read())
+
+	
 def decodeFolderName(name):
 	result = ""
 
@@ -113,3 +137,7 @@ if __name__ == "__main__":
 # containers.index
 # 1E EB 4E 2A   38 15   45 60   A4 71 C3 7F 15 2D 17 09 decoded
 # 2A 4E EB 1E   15 38   60 45   A4 71 C3 7F 15 2D 17 09 encoded
+
+# container.index
+# 8932F30E 7583 4A37 986D352A5160E516 decoded
+# 0EF33289 8375 374A 986D352A5160E516 encoded
