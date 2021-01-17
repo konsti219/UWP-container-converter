@@ -31,38 +31,6 @@ def decodeFolder(name, origin, destination):
 	folder_path = os.path.join(destination, name)
 	os.mkdir(folder_path)
 
-	# parse containers.index
-	if os.path.isfile(os.path.join(origin, "containers.index")):
-		print("Folder with containers.index")
-
-		with open(os.path.join(origin, "containers.index"), mode="rb") as container_file:
-			# parse header
-			header_data = struct.unpack("ll216s", container_file.read(224))
-
-			version = header_data[0]
-			print(f"Format version: {version}, {'matches' if version == containers_version else 'VERSION MISMATCH'}")
-
-			folder_count = header_data[1]
-			print(f"Found {folder_count} folder entries")
-
-			print(f"Header: {header_data[2].decode('utf16')}")
-			with open(os.path.join(folder_path, "header.bin"), "wb") as header_file:
-				header_file.write(header_data[2])
-
-			# read entries
-			for i in range(0, folder_count):
-				# get length of entry name
-				name_length = struct.unpack("i", container_file.read(4))[0] * 2
-
-				# read entry wit length of name + reminder
-				entry_data = struct.unpack(f"{name_length}s51x16s24x", container_file.read(name_length + 91))
-				entry_name = entry_data[0].decode("utf16")
-
-				print(f"Folder entry {i}: {entry_name}")
-
-				# recursion
-				decodeFolder(entry_name, os.path.join(origin, decodeFolderName(entry_data[1].hex().upper())), folder_path)
-
 	# parse container.*
 	for result in iglob(origin + "\\container.*"):
 		print("Folder with container.*")
@@ -101,6 +69,7 @@ def encodeFolder(origin, destination):
 	# create folder
 	os.mkdir(destination)
 
+	"""
 	# check for subfolders and encode
 	sub_folders = [ name for name in os.listdir(origin) if os.path.isdir(os.path.join(origin, name)) ]
 	print(sub_folders)
@@ -114,20 +83,23 @@ def encodeFolder(origin, destination):
 
 			print(f"Creating {len(sub_folders)} folders")
 
-			# read entries
+			# write entries
 			for i in range(0, len(sub_folders)):
-				pass
-				# get length of entry name
-				#name_length = struct.unpack("i", container_file.read(4))[0] * 2
+				name_length = len(sub_folders[i])
 
-				# read entry wit length of name + reminder
-				#entry_data = struct.unpack(f"{name_length}s51x16s24x", container_file.read(name_length + 91))
+				# write length
+				container_file.write(struct.pack("i", name_length))
+
+				# write entry with length of name + remainder
+				container_file.write(
+					struct.pack(f"{name_length * 2}s4xl43x16s24x", sub_folders[i].encode("utf16")[2:], 19, "AAAAAAAAAAAAAAAA".encode())
+				)
 				#entry_name = entry_data[0].decode("utf16")
 
 				#print(f"Folder entry {i}: {entry_name}")
 
 				# recursion
-				#decodeFolder(entry_name, os.path.join(origin, decodeFolderName(entry_data[1].hex().upper())), folder_path)
+				#decodeFolder(entry_name, os.path.join(origin, decodeFolderName(entry_data[1].hex().upper())), folder_path)"""
 
 	# check for files and encode
 	files = [name for name in os.listdir(origin) if os.path.isfile(os.path.join(origin, name)) and name != "header.bin"]
@@ -152,6 +124,32 @@ def decodeFolderName(name):
 
 if __name__ == "__main__":
 	pathlib.Path(decode_path).mkdir(parents=True, exist_ok=True)
+
+
+	# parse containers.index
+	if os.path.isfile(os.path.join(container_path, "containers.index")):
+		print("Parsing containers.index")
+
+		with open(os.path.join(container_path, "containers.index"), mode="rb") as container_file:
+			# parse header
+			header_data = struct.unpack("ll216s", container_file.read(224))
+
+			version = header_data[0]
+			print(f"Format version: {version}, {'matches' if version == containers_version else 'VERSION MISMATCH'}")
+
+			folder_count = header_data[1]
+			print(f"Found {folder_count} folder entries")
+
+			# read entries
+			for i in range(0, folder_count):
+				# get length of entry name
+				name_length = struct.unpack("i", container_file.read(4))[0] * 2
+
+				# read entry with length of name + remainder
+				entry_data = struct.unpack(f"{name_length}s51x16s24x", container_file.read(name_length + 91))
+				entry_name = entry_data[0].decode("utf16")
+
+				print(f"Folder entry {i}: {entry_name}")
 	
 	if len(sys.argv) > 1:
 		if sys.argv[1] == "-d":
@@ -159,7 +157,7 @@ if __name__ == "__main__":
 
 			# clean up
 			try:
-				shutil.rmtree(os.path.join(decode_path, "root"))
+				shutil.rmtree(os.path.join(decode_path, "saves"))
 			except:
 				pass
 
@@ -174,7 +172,7 @@ if __name__ == "__main__":
 			except:
 				pass
 
-			encodeFolder(os.path.join(decode_path, "root"), container_path)
+			encodeFolder(os.path.join(decode_path, "saves"), container_path)
 		else:
 			print("specify -d or -e")
 	else:
@@ -194,3 +192,5 @@ if __name__ == "__main__":
 # container.index
 # 8932F30E 7583 4A37 986D352A5160E516 decoded
 # 0EF33289 8375 374A 986D352A5160E516 encoded
+
+# 13 00 00 00 22 00 30 00 78 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 31 00 22 00 5B 02 00 00 00
